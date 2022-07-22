@@ -1,0 +1,109 @@
+# This is the configuration for Porter
+# You must define steps for each action, but the rest is optional
+# See https://porter.sh/author-bundles for documentation on how to configure your bundle
+# Uncomment out the sections below to take full advantage of what Porter can do!
+
+# Version of the porter.yaml schema used by this file.
+schemaVersion: 1.0.0-alpha.1
+
+name: mlops-spark-operator-bundle
+version: 0.1.0
+description: "Cnab bundle to deploy spark operator on to k8s cluster"
+# registry where the bundle is published to by default
+registry: "dockdeep6"
+
+mixins:
+  - exec
+  - helm3:
+      clientVersion: v3.7.0
+
+install:
+  - exec:
+      description: "Add mlops helm chart"
+      command: ./helpers.sh
+      arguments:
+        - addRepo
+        - "{{bundle.credentials.username}}"
+        - "{{bundle.credentials.password}}" 
+
+  - helm3:
+      description: "Install spark operator"
+      name: spark-operator
+      chart: mlops-helm-charts/spark-operator
+      version: 1.0.6
+      namespace: "{{bundle.parameters.namespace}}"
+      wait: true # default true
+      noHooks: false # disable pre/post upgrade hooks (default false)
+      skipCrds: false # if set, no CRDs will be installed (default false)
+      debug: true # enable verbose output (default false)
+      username: "{{bundle.credentials.username}}"
+      password: "{{bundle.credentials.password}}"
+
+ 
+
+upgrade:
+  - exec:
+      description: "Add mlops helm chart"
+      command: ./helpers.sh
+      arguments:
+        - addRepo
+        - "{{bundle.credentials.username}}"
+        - "{{bundle.credentials.password}}"
+
+  - helm3:
+      description: "Upgrade spark operator"
+      name: spark-operator
+      chart: mlops-helm-charts/spark-operator
+      version: 1.0.6
+      namespace: "{{bundle.parameters.namespace}}"
+      resetValues: true
+      reuseValues: false
+      wait: true # default true
+      noHooks: true # disable pre/post upgrade hooks (default false)
+      skipCrds: false # if set, no CRDs will be installed (default false)
+      debug: true # enable verbose output (default false)
+      username: "{{bundle.credentials.username}}"
+      password: "{{bundle.credentials.password}}"
+
+
+uninstall:
+  - helm3:
+      description: "Uninstall spark operator"
+      releases: 
+        - spark-operator
+      namespace: "{{bundle.parameters.namespace}}"
+      wait: true # default true
+      noHooks: true # disable pre/post upgrade hooks (default false)
+  - exec:
+      description: "Clean up few resources"
+      command: ./helpers.sh
+      arguments: 
+        - clean-up
+        - "{{bundle.credentials.kubeconfig}}"
+        - "{{bundle.parameters.namespace}}"
+
+# Below is an example of how to define credentials
+# See https://porter.sh/author-bundles/#credentials
+credentials:
+  - name: kubeconfig
+    path: /home/nonroot/.kube/config
+  - name: username
+    description: Helm registry username
+    env: HELM_USERNAME
+    applyTo:
+      - install
+      - upgrade
+  - name: password
+    description: Helm registry password
+    env: HELM_PASSWORD
+    applyTo:
+      - install
+      - upgrade
+
+parameters:
+  - name: namespace
+    type: string
+    default: default
+
+
+
