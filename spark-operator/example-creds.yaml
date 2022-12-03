@@ -1,0 +1,9 @@
+# Copyright 2022 Hewlett Packard Enterprise Development LP
+schemaType: CredentialSet
+schemaVersion: 1.0.1
+namespace: ""
+name: spark
+credentials:
+  - name: kubeconfig
+    source:
+      path: /path/to/your/kubeconfig
