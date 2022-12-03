@@ -1,0 +1,73 @@
+# Copyright 2022 Hewlett Packard Enterprise Development LP
+# This is the configuration for Porter
+# You must define steps for each action, but the rest is optional
+# See https://porter.sh/author-bundles for documentation on how to configure your bundle
+
+# Version of the porter.yaml schema used by this file.
+schemaVersion: 1.0.0-alpha.1
+
+name: mlops-spark-operator
+version: 0.0.2
+description: "Cnab bundle to deploy spark operator on to k8s cluster"
+# registry where the bundle is published to by default
+registry: "514372563764.dkr.ecr.us-east-1.amazonaws.com/hpe-hcss/ml-foundation-apps/"
+
+mixins:
+  - exec
+  - helm3:
+      clientVersion: v3.8.2
+
+install:
+  - helm3:
+      description: "Install spark operator"
+      name: spark-operator
+      chart: ./helm/spark-operator-chart
+      namespace: "{{bundle.parameters.namespace}}"
+      wait: true # default true
+      noHooks: false # disable pre/post upgrade hooks (default false)
+      skipCrds: false # if set, no CRDs will be installed (default false)
+      debug: false # enable verbose output (default false)
+
+upgrade:
+  - helm3:
+      description: "Upgrade spark operator"
+      name: spark-operator
+      chart: ./helm/spark-operator-chart
+      namespace: "{{bundle.parameters.namespace}}"
+      resetValues: true
+      reuseValues: false
+      wait: true # default true
+      noHooks: true # disable pre/post upgrade hooks (default false)
+      skipCrds: false # if set, no CRDs will be installed (default false)
+      debug: false # enable verbose output (default false)
+
+uninstall:
+  - helm3:
+      description: "Uninstall spark operator"
+      releases: 
+        - spark-operator
+      namespace: "{{bundle.parameters.namespace}}"
+      wait: true # default true
+      noHooks: true # disable pre/post upgrade hooks (default false)
+  - exec:
+      description: "Clean up few resources"
+      command: ./helpers.sh
+      arguments: 
+        - clean-up
+        - "{{bundle.credentials.kubeconfig}}"
+        - "{{bundle.parameters.namespace}}"
+
+# See https://porter.sh/author-bundles/#credentials
+credentials:
+  - name: kubeconfig
+    description: "kubeconfig of the target cluster"
+    path: /home/nonroot/.kube/config
+
+parameters:
+  - name: namespace
+    description: "namspace where spark operator needs to be deployed"
+    type: string
+    default: default
+
+
+
